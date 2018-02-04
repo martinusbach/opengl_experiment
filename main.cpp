@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cmath>
 
 #include <glbinding/gl/gl.h>
 #include <glbinding/gl/functions-patches.h>  // required to allow non-type-safe functions calls
@@ -40,15 +41,13 @@ int main()
     // Create a Vertex Buffer Object and copy the vertex data to it
     GLuint vbo;
     glGenBuffers(1, &vbo);
-
     GLfloat vertices[] = {
          0.0f,  0.5f,
          0.5f, -0.5f,
         -0.5f, -0.5f
     };
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);  // make vbo the 'active' buffer
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);  // copy to 'active' buffer
 
     // Shader sources
     const GLchar* vertexSource = R"glsl(
@@ -61,10 +60,11 @@ int main()
     )glsl";
     const GLchar* fragmentSource = R"glsl(
         #version 150 core
+        uniform vec3 triangleColor;
         out vec4 outColor;
         void main()
         {
-            outColor = vec4(1.0, 1.0, 1.0, 1.0);
+            outColor = vec4(triangleColor, 1.0);
         }
     )glsl";
 
@@ -92,11 +92,18 @@ int main()
     glVertexAttribPointer(static_cast<GLuint>(posAttrib), 2, static_cast<gl::GLenum>(GL_FLOAT), GL_FALSE, 0, 0);
 
     // main event loop
+    auto t_start = std::chrono::high_resolution_clock::now();
     while(!glfwWindowShouldClose(window))
     {
         // Clear the screen to black
-        gl::glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        gl::glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
+
+        auto t_now = std::chrono::high_resolution_clock::now();
+        float time = std::chrono::duration_cast<std::chrono::duration<float>>(t_now - t_start).count();
+
+        GLint uniColor = glGetUniformLocation(shaderProgram, "triangleColor");
+        glUniform3f(uniColor, (sin(time * 4.0f) + 1.0f) / 2.0f, 0.0f, 0.0f);
 
         // Draw a triangle from the 3 vertices
         glDrawArrays(GL_TRIANGLES, 0, 3);
